@@ -2,6 +2,7 @@
 
 import sys
 import os
+import time
 import argparse
 import socket
 from socket import AF_INET
@@ -19,15 +20,15 @@ from logging.handlers import RotatingFileHandler
 
 class WorkersConfig:
 	""" Workers configurations """
-	WORKERS_COUNT = 50  # How many threads will make http requests.
-	DECREMENTED_COUNT_ON_ERROR = 10  # Retry the fuzzing with x less workers, to decrease the load on the server.
+	WORKERS_COUNT = 10  # How many threads will make http requests.
+	DECREMENTED_COUNT_ON_ERROR = round(WORKERS_COUNT/10)  # Retry the fuzzing with x less workers, to decrease the load on the server.
 
 
 class LogConfig:
 	"""	Logging configurations. """
 	FORMAT = '%(asctime)s - %(levelname)s - [%(name)s] - %(message)s'
 	# LEVEL = os.environ.get("LOGLEVEL", "INFO")
-	LEVEL = logging.DEBUG
+	LEVEL = logging.INFO
 	FOLDER = 'logs'
 	FILES_COUNT = 50
 	MAX_BYTES = 0.5 * 1000 * 1000  # 500 KB
@@ -48,6 +49,7 @@ class HttpConfig:
 	ACCEPT_SCHEMAS = ['http','https']
 	USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
 	TIMEOUT = 5
+	DELAY = 0.05
 
 
 class Config:
@@ -229,7 +231,8 @@ class AsyncURLFuzzer(object):
 		:param async_workers_count: How many workers (threads) to use.
 		:type async_workers_count: int
 		"""
-		self._load_paths_list()
+		self._load_paths_files() # fill path_files_list
+
 		if 0 >= async_workers_count:
 			self.logger.info('Seems like the site ['+ self.base_url +'] does not support fuzzing, as it has a DDOS protection engine.')
 			return
@@ -237,27 +240,36 @@ class AsyncURLFuzzer(object):
 		pool = ThreadPool(async_workers_count)
 		try:
 			tasks = []
-			self.logger.info('Preparing the workers for ['+self.base_url+']...')
-			for i, path in enumerate(self.paths):
-				self.logger.debug('Started a worker for the endpoint /{0}'.format(path))
-				if i > i and i % config.log.INTERVAL == 0:
-					self.logger.info('Started {0} workers'.format(i))
-				path = path.strip()
-				full_path = '/'.join([self.base_url, path])
-				tasks.append(pool.apply_async(self.request_head, (full_path, path))) # set task
-			for t in tasks:
-				task_result = t.get()
+			self.logger.info('>>> Preparing the workers for ['+self.base_url+']...')
+			for i, paths_file in enumerate(self.path_files_list):
+				self.logger.debug('Load: '+paths_file)
+				self.list_file = paths_file
+				self._load_paths_list() # fill self.paths with one file strings
 				
-				if task_result is not None:
-					status_code, full_path, path = t.get() # get task result
-					self.checked_endpoints[path] = path
-				
-					if status_code in self.resource_exists_status_codes:
-						self.active_paths_status_codes[path] = status_code
-						self.logger.info('Fetched {0}/{1}; {2}; {3}'.format(
-							len(self.checked_endpoints), self.endpoints_total_count, status_code, full_path
-						))
-			self._save_output_log()
+				self.logger.info('Proceed tasks from: '+paths_file)
+				# make tasks from self.paths lines
+				for i, path in enumerate(self.paths):
+					self.logger.debug('Started a worker for the endpoint /{0}'.format(path))
+					if i > i and i % config.log.INTERVAL == 0:
+						self.logger.info('Started {0} workers'.format(i))
+					path = path.strip()
+					full_path = '/'.join([self.base_url, path])
+					tasks.append(pool.apply_async(self.request_head, (full_path, path))) # set task
+			
+
+				for t in tasks:
+					task_result = t.get()
+					
+					if task_result is not None:
+						status_code, full_path, path = t.get() # get task result
+						self.checked_endpoints[path] = path
+					
+						if status_code in self.resource_exists_status_codes:
+							self.active_paths_status_codes[path] = status_code
+							self.logger.debug('Fetched {0}/{1}; {2}; {3}'.format(
+								len(self.checked_endpoints), self.endpoints_total_count, status_code, full_path
+							))
+				self._save_output_log()
 		except requests.ConnectionError as e:
 			pool.terminate()
 			self.logger.debug('Error! Code: {c}, Message, {m}'.format(c = type(e).__name__, m = str(e)))
@@ -276,12 +288,27 @@ class AsyncURLFuzzer(object):
 		if len(output_lines) <= 0:
 			self.logger.info('No endpoints for [' + self.base_url + ']')
 		else:
-			self.logger.info('The following endpoints are active:{0}{1}'.format(os.linesep, os.linesep.join(output_lines)))
+			self.logger.info('The following endpoints are active:{0}{1}'.format(os.linesep, os.linesep.join(output_lines))+"\n\n")
 			with open(self.output_file, 'a+') as output_file:
 				output_lines.sort()
 				output_file.write(os.linesep.join(output_lines))
 				output_file.write(os.linesep)
-			self.logger.info('The endpoints were exported to "{0}"'.format(self.output_file))
+			self.logger.debug('The endpoints were exported to "{0}"'.format(self.output_file)+"\n\n")
+
+
+	def _load_paths_files(self):
+		path_files_list = []
+		list_file = self.list_file.strip().rstrip('/')
+		if os.path.isdir(list_file):
+			for root, dirs, files in os.walk(list_file):
+				path = root.split(os.sep)
+				for file in files:
+					if file=='.DS_Store': continue
+					path_files_list += [os.sep.join(path+[file])]
+			
+		else:
+			path_files_list = [list_file]
+		self.path_files_list = path_files_list
 
 	def _load_paths_list(self):
 		"""
@@ -292,7 +319,7 @@ class AsyncURLFuzzer(object):
 			raise FileNotFoundError('The file "{0}" does not exist.'.format(self.list_file))
 		with open(self.list_file, 'r') as paths_file:
 			paths = [p.strip().lstrip('/').rstrip('/') for p in paths_file.read().splitlines()]
-			paths = [p for p in paths if p not in self.active_paths_status_codes]
+			paths = [p for p in paths if p not in self.active_paths_status_codes] # check if path already fuzzed
 			if not self.endpoints_total_count:
 				self.endpoints_total_count = len(paths)
 			self.paths = paths
@@ -310,6 +337,8 @@ class AsyncURLFuzzer(object):
 		self.logger.debug('Request: ' + url)
 		if url != '':
 			try:
+				if config.http.DELAY!=0:
+					time.sleep(config.http.DELAY)
 				res = self.session.head(url, verify=False, allow_redirects=False, timeout=config.http.TIMEOUT)
 			except ReadTimeout as e:
 				self.logger.info('Timeout error: '+url)
