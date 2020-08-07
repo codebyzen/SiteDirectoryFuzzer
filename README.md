@@ -7,6 +7,20 @@ Simple example:
     python sdf.py -u example.com
 
 
+####Short help
+
+    -u  The target website to scan or path to file with domains list. (Scheme required!)
+    -l  A file containing paths or directory with this files.
+    -w  Workers (threads) count. (default=10)
+    -d  Delay between requests. (default=0.03)
+    -t  Request timeout. (default=3)
+    -s  A file containing subdomains.
+    -o  A file to output.
+    -ua Set user-agent manually.
+
+
+####Extended help
+
 You can use one url or file with list of urls:
 
     python sdf.py -u domains.txt
@@ -57,7 +71,7 @@ Full stack of commands example:
 
     python sdf.py -u ./directoryWithURLSList/ -s ./subdomainList.txt -l ./directoryWithPathLists -w 50 -d 0.03 -t 3 -o out.txt -ua 31337
 
-## Installation 
+### Installation 
 
 To install SDF, simply use git:
 
