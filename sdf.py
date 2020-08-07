@@ -5,14 +5,11 @@ import os
 import time
 import argparse
 import socket
-from socket import AF_INET
-from socket import SOCK_DGRAM
 from multiprocessing.pool import ThreadPool
 
 import requests
 from requests.packages import urllib3
 from requests.exceptions import ProxyError, TooManyRedirects, ConnectionError, ConnectTimeout, ReadTimeout
-# from urllib3.exceptions import NewConnectionError
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -28,7 +25,7 @@ class LogConfig:
 	"""	Logging configurations. """
 	FORMAT = '%(asctime)s - %(levelname)s - [%(name)s] - %(message)s'
 	# LEVEL = os.environ.get("LOGLEVEL", "INFO")
-	LEVEL = logging.INFO
+	LEVEL = logging.DEBUG
 	FOLDER = 'logs'
 	FILES_COUNT = 50
 	MAX_BYTES = 0.5 * 1000 * 1000  # 500 KB
@@ -49,7 +46,7 @@ class HttpConfig:
 	ACCEPT_SCHEMAS = ['http','https']
 	USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
 	TIMEOUT = 5
-	DELAY = 0.05
+	DELAY = 0.03
 
 
 class Config:
@@ -189,38 +186,28 @@ class AsyncURLFuzzer(object):
 			port = 443 
 		else: 
 			port = 80
-		if self._check_host(url_parsed.host, port) is None: 
+		if self._check_host(url_parsed.host, url_parsed.scheme) is None: 
 			self._save_output_log()
 			return None
 		self._get_website_endpoints()
 
-	def _check_host(self, url, port):
-		self.logger.info('>>> Check: '+url+':'+str(port))
-
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	def _check_host(self, url, scheme):
+		self.logger.info('>>> Check: '+scheme+'://'+url)
+		session = requests.session()
+		session.headers['User-Agent'] = config.http.USER_AGENT
 		try:
-			result = sock.connect_ex((url, port))
-			if result == 0:
-				return True
-			else:
+			responce = session.head(scheme+'://'+url, verify=False, allow_redirects=False, timeout=config.http.TIMEOUT)
+			if responce.status_code not in config.http.ACCEPT_STATUS_CODES:
+				self.logger.info('URL code is ['+str(responce.status_code)+'], skip!')
+				responce.close()
 				return None
-		except socket.gaierror as e:
-			self.logger.info(e) # [Errno 8] nodename nor servname provided, or not known
+		except ConnectionError as e:
+			self.logger.info('URL ConnectionError, skip!')
+			session.close()
 			return None
 
-		# client_socket = socket.socket(AF_INET, SOCK_DGRAM)
-		# client_socket.settimeout(2)
-		# try:
-		# 	client_socket.sendto('Message'.encode(), (url, port))
-		# except socket.gaierror as e:
-		# 	self.logger.info(e) # [Errno 8] nodename nor servname provided, or not known
-		# 	return None
-		# try:
-		# 	reply, server_address_info = client_socket.recvfrom(1024)
-		# except socket.timeout as e:
-		# 	self.logger.info(e)
-		# 	return None
-		# return True
+		responce.close()
+		return True
 
 
 	def _get_website_endpoints(self, async_workers_count=config.workers.WORKERS_COUNT):
