@@ -355,8 +355,6 @@ if __name__ == '__main__':
 	desc += '''Asynchronous tool to discovery aviablility of websites paths.\n'''
 	desc += '''Locates resources in websites based on a list of paths.\n'''
 	desc += '''Check out the "pathlist" directory for examples.\n'''
-	desc += '''Based on smart-url-fuzzer [https://github.com/avilum/smart-url-fuzzer].\n'''
-
 
 	parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
 	parser.add_argument('-u', dest='base_url', help='The target website to scan or path to file with domains list. (Scheme required!)', required=1)
