@@ -18,14 +18,14 @@ from logging.handlers import RotatingFileHandler
 class WorkersConfig:
 	""" Workers configurations """
 	WORKERS_COUNT = 10  # How many threads will make http requests.
-	DECREMENTED_COUNT_ON_ERROR = round(WORKERS_COUNT/10)  # Retry the fuzzing with x less workers, to decrease the load on the server.
+	DECREMENTED_COUNT_ON_ERROR = int(-(-(WORKERS_COUNT/10) // 1))  # Retry the fuzzing with x less workers, to decrease the load on the server.
 
 
 class LogConfig:
 	"""	Logging configurations. """
 	FORMAT = '%(asctime)s - %(levelname)s - [%(name)s] - %(message)s'
 	# LEVEL = os.environ.get("LOGLEVEL", "INFO")
-	LEVEL = logging.DEBUG
+	LEVEL = logging.INFO
 	FOLDER = 'logs'
 	FILES_COUNT = 50
 	MAX_BYTES = 0.5 * 1000 * 1000  # 500 KB
