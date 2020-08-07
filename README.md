@@ -7,7 +7,7 @@ Simple example:
     python sdf.py -u example.com
 
 
-####Short help
+#### Short help
 
     -u  The target website to scan or path to file with domains list. (Scheme required!)
     -l  A file containing paths or directory with this files.
@@ -19,7 +19,7 @@ Simple example:
     -ua Set user-agent manually.
 
 
-####Extended help
+#### Extended help
 
 You can use one url or file with list of urls:
 
