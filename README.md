@@ -38,6 +38,24 @@ Optional change user-agent:
     python sdf.py -u example.com -ua 31337
 
 
+Setup requests:
+
+_Workers count is number of threads simultaneously runned_
+
+    python sdf.py -u example.com -w 100
+
+_Request delay is how many time sleep between each requests_ 
+
+    python sdf.py -u example.com -d 0.01
+
+_Timeout is how many time we wait server response_
+
+    python sdf.py -u example.com -t 3
+
+
+Full stack of commands example:
+
+    python sdf.py -u ./directoryWithURLSList/ -s ./subdomainList.txt -l ./directoryWithPathLists -w 50 -d 0.03 -t 3 -o out.txt -ua 31337
 
 ## Installation 
 
