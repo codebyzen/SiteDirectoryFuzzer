@@ -359,6 +359,9 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
 	parser.add_argument('-u', dest='base_url', help='The target website to scan or path to file with domains list. (Scheme required!)', required=1)
 	parser.add_argument('-l', dest='list_file', help='A file containing paths or directory with this files.',default=config.io.DEFAULT_PATHS_LIST_FILE)
+	parser.add_argument('-w', dest='workers_count', help='Workers (threads) count. (default=10)',default=config.workers.WORKERS_COUNT)
+	parser.add_argument('-d', dest='request_delay', help='Delay between requests. (default=0.03)',default=config.http.DELAY)
+	parser.add_argument('-t', dest='timeout', help='Request timeout. (default=3)',default=config.http.TIMEOUT)
 	parser.add_argument('-s', dest='subdomains_list', help='A file containing subdomains')
 	parser.add_argument('-o', dest='output_file', help='A file to output',default=config.io.VALID_ENDPOINTS_FILE)
 	parser.add_argument('-ua', dest='user_agent', help='Set user-agent manually',default=config.http.USER_AGENT)
@@ -373,6 +376,9 @@ if __name__ == '__main__':
 	output_file = options.output_file
 	subdomains_list = options.subdomains_list
 	config.http.USER_AGENT = options.user_agent
+	config.workers.WORKERS_COUNT = options.user_agent
+	config.http.DELAY = options.request_delay
+	config.http.TIMEOUT = options.timeout
 
 	if (os.path.isdir(base_url) or os.path.isfile(base_url)):
 		FilesFactory(base_url)
