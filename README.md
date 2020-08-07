@@ -1,6 +1,6 @@
 # SDF - Site Directory Fuzzer
 
-SDF has been created to automate search task of hidden directories and files on server. It's multithreading btw.
+SDF has been created to automate search task of hidden directories and files on server. It's multithreaded btw.
 
 Simple example:
 
